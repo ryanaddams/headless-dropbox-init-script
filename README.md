@@ -1,2 +1,4 @@
 # headless-dropbox-init-script
-Headless dropbox bash init script, adapted from https://gist.github.com/benhedrington/
+Headless dropbox bash init script, adapted from https://gist.github.com/benhedrington/ which I discovered through this [http://rkulla.blogspot.com/2014/03/headless-dropbox.html](handy guide) by [http://rkulla.blogspot.com](Ryan Kulla) on setting everything up. 
+
+The Dropbox script as it was in the gist hadn't been updated to account for recentish changes to the Dropbox Linux version; namely, the renaming of the dropbox daemon to "drobpoxd" and, apparently, it becoming a symlink to the actual versioned daemon binary. I made a few minor modifications to have it use the pidfile that Dropbox creates on start to kill the daemon, as well as adding "nice" and "iosched" settings to the initial start-stop-daemon call so that Dropbox doesn't eat up all of the CPU on my Ubuntu server (which it was, initially).
