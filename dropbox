@@ -1,0 +1,105 @@
+#!/bin/bash
+#
+# Headless Dropbox bash init script
+#
+# This bash script lets you run headless dropbox as a service, for each specified
+# user, on Linux (tested with Ubuntu 14.04 LTS)
+#
+# More information on headless Dropbox: https://www.dropbox.com/install?os=lnx
+#
+# Short summary:
+#
+# To install 64-bit version of headless Dropbox, use this command under each user
+# you wish to run the service under:
+#
+# cd ~ && wget -O - "https://www.dropbox.com/download?plat=lnx.x86_64" | tar xzf -
+#
+# Then run:
+# ~/.dropbox-dist/dropboxd
+#
+# and leave it running, then cut and paste the link into your browser to link
+# the Dropbox account with the provided token.
+#
+# Ubuntu systems: Move this file to /etc/init.d/dropbox, grant it execute
+# permissions, e.g.:
+# chmod 700 /etc/init.d/dropbox
+# and then run this command to autostart the daemon(s) for each specified
+# user (see below) on boot:
+# sudo update-rc.d dropbox defaults
+#
+# Decent guide to setting this up by Ryan Kulla:
+# http://rkulla.blogspot.com/2014/03/headless-dropbox.html
+#
+# Replace these with linux usernames for whom you wish to run Dropbox syncing
+# (Dropbox must have been installed and set up under each user's home directory
+# - see above - prior to this)
+#
+DROPBOX_USERS="user1 user2"
+ 
+DAEMON=.dropbox-dist/dropboxd
+PIDFILE=.dropbox/dropbox.pid
+NICELEVEL=10
+IOSCHED=best-effort:6
+
+start() {
+    echo "Starting dropbox..."
+    for dbuser in $DROPBOX_USERS; do
+        HOMEDIR=`getent passwd $dbuser | cut -d: -f6`
+        if [ -e "$HOMEDIR/$DAEMON" ] && [ -x "$HOMEDIR/$DAEMON" ]; then
+            HOME="$HOMEDIR" start-stop-daemon -N $NICELEVEL -I $IOSCHED -b -o -c $dbuser -S -u $dbuser -x "$HOMEDIR/$DAEMON"
+        fi
+    done
+}
+ 
+stop() {
+    echo "Stopping dropbox..."
+    for dbuser in $DROPBOX_USERS; do
+        HOMEDIR=`getent passwd $dbuser | cut -d: -f6`
+        if [ -e "$HOMEDIR/$PIDFILE" ]; then
+            start-stop-daemon -o -c $dbuser -K -u $dbuser -p "$HOMEDIR/$PIDFILE"
+        else
+            echo "$HOMEDIR/$PIDFILE does not exist, cannot stop"
+        fi
+    done
+}
+ 
+status() {
+    for dbuser in $DROPBOX_USERS; do
+        HOMEDIR=`getent passwd $dbuser | cut -d: -f6`
+        dbpid=`pgrep -u $dbuser dropbox`
+        if [ -z $dbpid ] ; then
+            echo "dropboxd for USER $dbuser: not running."
+        else
+            echo "dropboxd for USER $dbuser: running (pid $dbpid)"
+            if [ ! -e "$HOMEDIR/$PIDFILE" ] ; then
+                echo "However, $HOMEDIR/$PIDFILE does not exist!"
+            fi
+        fi
+    done
+}
+ 
+case "$1" in
+ 
+    start)
+        start
+        ;;
+ 
+    stop)
+        stop
+        ;;
+ 
+    restart|reload|force-reload)
+        stop && start
+        ;;
+ 
+    status)
+        status
+        ;;
+ 
+    *)
+        echo "Usage: /etc/init.d/dropbox {start|stop|reload|force-reload|restart|status}"
+        exit 1
+ 
+esac
+ 
+exit 0
